@@ -6,10 +6,12 @@ class TankScene extends Phaser.Scene {
     bullets;
     enemyBullets;
     explosions;
+    score;
     preload() {
         // load tank atlas 
         this.load.atlas('tank', 'assets/tanks/tanks.png', 'assets/tanks/tanks.json');
         this.load.atlas('enemy', 'assets/tanks/enemy-tanks.png', 'assets/tanks/tanks.json');
+        this.load.atlas('boss', 'assets/tanks/enemy-boss.png', 'assets/tanks/tanks.json');
         // load bullet image
         this.load.image('bullet', 'assets/tanks/bullet.png');
         // load explosion spritesheet
@@ -19,18 +21,27 @@ class TankScene extends Phaser.Scene {
         })
         // load tileset
         this.load.image('tileset', 'assets/tanks/landscape-tileset.png');
+        this.load.image('tileset2', 'assets/tanks/landscape2-tileset.png');
         // load tilemap data
         this.load.tilemapTiledJSON('tilemap', 'assets/tanks/level1.json');
+
+        //load in HP Bars
+        this.load.image('outline-big', 'assets/ui/hp-bar-big.png');
+        this.load.image('outline-small', 'assets/ui/hp-bar-small.png');
+        this.load.image('bar-big', 'assets/ui/hp-bar2-big.png');
+        this.load.image('bar-small', 'assets/ui/hp-bar2-small.png');
     }
     create() {
+        this.score = 0;
         // load in the tilemap
         this.map = this.make.tilemap({
             key: 'tilemap'
         });
         // add tileset image to map
         let landscape = this.map.addTilesetImage('landscape-tileset', 'tileset');
+        let landscape2 = this.map.addTilesetImage('landscape2-tileset', 'tileset2');
         // create static ground layer 
-        this.map.createStaticLayer('ground', landscape);
+        this.map.createStaticLayer('ground', [landscape, landscape2]);
         // create dynamic destructable layer
         this.destructLayer = this.map.createDynamicLayer('destructable', landscape, 0, 0);
         // set collision by property for destructable layer
@@ -49,7 +60,7 @@ class TankScene extends Phaser.Scene {
         // create player bullets physics group
         this.bullets = this.physics.add.group({
             defaultKey: 'bullet',
-            maxSize: 5
+            maxSize: 2
         })
         // get reference to object layer in tilemap data
         let objectLayer = this.map.getObjectLayer("objects");
@@ -59,13 +70,15 @@ class TankScene extends Phaser.Scene {
         objectLayer.objects.forEach(function (object) {
             object = Utils.RetrieveCustomProperties(object);
             //test for object types
-            if(object.type === "playerSpawn"){
+            if (object.type === "playerSpawn") {
                 this.createPlayer(object);
-            }else if(object.type === "enemySpawn"){
+            } else if (object.type === "enemySpawn") {
+                enemyObjects.push(object);
+            } else if (object.type === "bossSpawn") {
                 enemyObjects.push(object);
             }
-        },this)
-        for(let i = 0; i < enemyObjects.length; i++){
+        }, this)
+        for (let i = 0; i < enemyObjects.length; i++) {
             this.createEnemy(enemyObjects[i]);
         }
         // create explosion animation
@@ -93,6 +106,10 @@ class TankScene extends Phaser.Scene {
         this.physics.world.on('worldbounds', function (body) {
             this.disposeOfBullet(body.gameObject)
         }, this);
+
+        this.uiScene = this.scene.get("UIScene");
+        this.scene.launch(this.uiScene);
+        this.uiScene.createUIElements()
     }
     update(time, delta) {
         // update player
@@ -109,7 +126,13 @@ class TankScene extends Phaser.Scene {
     }
     createEnemy(object) {
         // object has x and y props
-        let enemyTank = new EnemyTank(this, object.x, object.y, 'enemy', 'tank1', this.player);
+        let enemyTank
+        if (object.type == "enemySpawn") {
+            enemyTank = new EnemyTank(this, object.x, object.y, 'enemy', 'tank1', this.player);
+        } else {
+            enemyTank = new BossTank(this, object.x, object.y, 'boss', 'tank1', this.player);
+        }
+        enemyTank.initmvt()
         // create temp ref for enemy tank
         // create enemy tank 
         // enable enemy collision with destructable layer
@@ -184,6 +207,8 @@ class TankScene extends Phaser.Scene {
         bullet.disableBody(true, true);
     }
     bulletHitEnemy(hull, bullet) {
+        this.score++;
+        this.uiScene.updateScoreText(this.score);
         // call disposeOfBullet
         this.disposeOfBullet(bullet);
         // loop though enemy tanks array and find enemy tank that has been hit
@@ -238,5 +263,35 @@ class TankScene extends Phaser.Scene {
         // activate explosion
         explosion.setActive(true);
         explosion.setVisible(true);
+    }
+}
+
+class UIScene extends Phaser.Scene {
+    constructor() {
+        super("UIScene");
+    }
+
+    createUIElements() {
+        this.scoreText = this.add.text(10, 10, "Score 0", {
+            font: '40px Arial',
+            fill: '#000000'
+        });
+
+        this.healthBar = {};
+        this.healthBar.outline = this.add.sprite(config.width / 2, config.height - 80, 'outline-big');
+        this.healthBar.bar = this.add.sprite(config.width / 2, config.height - 80, 'bar-big');
+        this.healthBar.mask = this.add.sprite(this.healthBar.bar.x, this.healthBar.bar.y, 'bar-big');
+        this.healthBar.mask.visible = false;
+        this.healthBar.bar.mask = new Phaser.Display.Masks.BitmapMask(this, this.healthBar.mask);
+        this.healthBar.mask.offSet = 0;
+    }
+
+    updateScoreText(score) {
+        this.scoreText.setText('score: ' + score);
+    }
+
+    updateHealthBar(player) {
+        this.healthBar.mask.offSet = this.healthBar.bar.width - (this.healthBar.bar.width * (1 - player.damageCount/player.damageMax));
+        this.healthBar.mask.setPosition(this.healthBar.bar.x - this.healthBar.mask.offSet, this.healthBar.bar.y);
     }
 }
