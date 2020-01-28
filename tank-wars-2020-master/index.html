@@ -17,6 +17,7 @@
     <script src="js/TankClasses.js" type="text/javascript"></script>
     <script src="js/TankScene.js" type="text/javascript"></script>
     <script src="js/Utils.js" type="text/javascript"></script>
+    <script src="js/UIClasses.js" type="text/javascript"></script>
     <script>
         var config = {
             type: Phaser.AUTO,
@@ -32,7 +33,7 @@
                 }
             },
             pixelArt: false,
-            scene: [TankScene, UIScene]
+            scene: [MenuScene, TankScene, UIScene]
         };
         var game = new Phaser.Game(config);
     </script>

@@ -7,6 +7,10 @@ class TankScene extends Phaser.Scene {
     enemyBullets;
     explosions;
     score;
+    constructor(){
+        super("GameScene");
+    }
+    
     preload() {
         // load tank atlas 
         this.load.atlas('tank', 'assets/tanks/tanks.png', 'assets/tanks/tanks.json');
@@ -30,6 +34,7 @@ class TankScene extends Phaser.Scene {
         this.load.image('outline-small', 'assets/ui/hp-bar-small.png');
         this.load.image('bar-big', 'assets/ui/hp-bar2-big.png');
         this.load.image('bar-small', 'assets/ui/hp-bar2-small.png');
+
     }
     create() {
         this.score = 0;
@@ -109,7 +114,7 @@ class TankScene extends Phaser.Scene {
 
         this.uiScene = this.scene.get("UIScene");
         this.scene.launch(this.uiScene);
-        this.uiScene.createUIElements()
+        this.uiScene.createUIElements(this);
     }
     update(time, delta) {
         // update player
@@ -271,7 +276,9 @@ class UIScene extends Phaser.Scene {
         super("UIScene");
     }
 
-    createUIElements() {
+    createUIElements(gameScene) {
+        this.gameScene = gameScene;
+
         this.scoreText = this.add.text(10, 10, "Score 0", {
             font: '40px Arial',
             fill: '#000000'
@@ -284,6 +291,26 @@ class UIScene extends Phaser.Scene {
         this.healthBar.mask.visible = false;
         this.healthBar.bar.mask = new Phaser.Display.Masks.BitmapMask(this, this.healthBar.mask);
         this.healthBar.mask.offSet = 0;
+
+        this.pauseButton = new Button(this, 650, 20, 'pauseButton', function () {
+            this.scene.gameScene.scene.pause();
+            this.scene.pauseMenu.setVisible(true);
+        });
+
+        this.add.existing(this.pauseButton);
+
+        this.pauseMenu = new Menu(this, 240, 140, 300, 300, 'menuBackground', [
+            new Button(this, 30, 30, 'playButton', function () {
+                this.scene.gameScene.scene.resume();
+                this.scene.pauseMenu.setVisible(false);
+            }),
+        ]);
+        this.add.existing(this.pauseMenu);
+        this.pauseMenu.setVisible(false);
+
+        this.input.on('pointerup', function(pointer){
+            pointer.lastBtn.clearTint();
+        })
     }
 
     updateScoreText(score) {
@@ -291,7 +318,34 @@ class UIScene extends Phaser.Scene {
     }
 
     updateHealthBar(player) {
-        this.healthBar.mask.offSet = this.healthBar.bar.width - (this.healthBar.bar.width * (1 - player.damageCount/player.damageMax));
+        this.healthBar.mask.offSet = this.healthBar.bar.width - (this.healthBar.bar.width * (1 - player.damageCount / player.damageMax));
         this.healthBar.mask.setPosition(this.healthBar.bar.x - this.healthBar.mask.offSet, this.healthBar.bar.y);
+    }
+
+}
+
+class MenuScene extends Phaser.Scene {
+    constructor() {
+        super('MenuScene');
+    }
+
+    preload() {
+         //load in buttons
+         this.load.image('playButton', 'assets/ui/play.png')
+         this.load.image('pauseButton', 'assets/ui/pause.png')
+         this.load.image('menuBackground', 'assets/ui/menuBox.png')
+
+    }
+    create() {
+        this.mainMenu = new Menu(this, 30, 30, config.width - 60, config.height - 55, "menuBackground", [
+            new Button(this, 30, 30, 'playButton', function () {
+                this.scene.scene.start("GameScene");
+            }),
+        ])
+        this.add.existing(this.mainMenu);
+
+        this.input.on('pointerup', function(pointer){
+            pointer.lastBtn.clearTint();
+        })
     }
 }
