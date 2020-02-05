@@ -7,10 +7,19 @@ class TankScene extends Phaser.Scene {
     enemyBullets;
     explosions;
     score;
-    constructor(){
+    constructor() {
         super("GameScene");
     }
-    
+    init(data) {
+        console.log(data);
+
+        this.music = new AudioManager(this);
+        if (data.music) {
+            this.music.volume = data.music.volume;
+            this.music.muted = data.music.muted;
+        }
+    }
+
     preload() {
         // load tank atlas 
         this.load.atlas('tank', 'assets/tanks/tanks.png', 'assets/tanks/tanks.json');
@@ -115,7 +124,12 @@ class TankScene extends Phaser.Scene {
         this.uiScene = this.scene.get("UIScene");
         this.scene.launch(this.uiScene);
         this.uiScene.createUIElements(this);
+
+        this.music = new AudioManager(this);
+        this.music.addAudio('gameMusic', { loop: true });
+        this.music.play('gameMusic');
     }
+
     update(time, delta) {
         // update player
         this.player.update();
@@ -124,11 +138,13 @@ class TankScene extends Phaser.Scene {
             this.enemyTanks[i].update(time, delta)
         }
     }
+
     createPlayer(object) {
         this.player = new PlayerTank(this, object.x, object.y, 'tank', 'tank1');
         // enable player collision with destructable layer
         this.player.enableCollision(this.destructLayer);
     }
+
     createEnemy(object) {
         // object has x and y props
         let enemyTank
@@ -155,6 +171,7 @@ class TankScene extends Phaser.Scene {
             }
         }
     }
+
     tryShoot(pointer) {
         // check whether a bullet is available from group
         let bullet = this.bullets.get(this.player.turret.x, this.player.turret.y);
@@ -163,6 +180,7 @@ class TankScene extends Phaser.Scene {
             this.fireBullet(bullet, this.player.turret.rotation, this.enemyTanks);
         }
     }
+
     fireBullet(bullet, rotation, target) {
         // fyi bullet is a Sprite
         // set z index of bullet to appear above tank hull but below turret
@@ -177,6 +195,10 @@ class TankScene extends Phaser.Scene {
         bullet.rotation = rotation;
         // set velocity from rotation
         this.physics.velocityFromRotation(bullet.rotation, 500, bullet.body.velocity);
+        //add firing audio
+        this.music = new AudioManager(this);
+        this.music.addAudio('shoot');
+        this.music.play('shoot');
         // add collider between bullet and destructable layer
         this.physics.add.collider(bullet, this.destructLayer, this.damageWall, null, this);
         // if target is player, check for overlap with player
@@ -190,11 +212,16 @@ class TankScene extends Phaser.Scene {
         }
 
     }
+
     bulletHitPlayer(hull, bullet) {
         // call disposeOfBullet
         this.disposeOfBullet(bullet);
         // damage player
         this.player.damage();
+        // add explosion audio
+        this.music = new AudioManager(this);
+        this.music.addAudio('explosion');
+        this.music.play('explosion');
         // if player destroyed, end game, play explosion animation
         if (this.player.isDestroyed()) {
             this.input.enabled = false;
@@ -207,15 +234,21 @@ class TankScene extends Phaser.Scene {
             }
         }
     }
+
     disposeOfBullet(bullet) {
         // remove bullet from physics system, make invisible
         bullet.disableBody(true, true);
     }
+
     bulletHitEnemy(hull, bullet) {
         this.score++;
         this.uiScene.updateScoreText(this.score);
         // call disposeOfBullet
         this.disposeOfBullet(bullet);
+        // add explosion audio
+        this.music = new AudioManager(this);
+        this.music.addAudio('explosion');
+        this.music.play('explosion');
         // loop though enemy tanks array and find enemy tank that has been hit
         let enemy, index;
         for (let i = 0; i < this.enemyTanks.length; i++) {
@@ -241,6 +274,7 @@ class TankScene extends Phaser.Scene {
         }
         // if enemy is destroyed, remove from enemy tanks array
     }
+
     damageWall(bullet, tile) {
         // call disposeOfBullet
         this.disposeOfBullet(bullet);
@@ -258,10 +292,12 @@ class TankScene extends Phaser.Scene {
             }
         }
     }
+
     animComplete(animation, frame, gameObject) {
         // disable and return the explosion sprite to the explosions pool
         gameObject.disableBody(true, true);
     }
+
     activateExplosion(explosion) {
         // set z index of explosion above everything else
         explosion.setDepth(5);
@@ -308,7 +344,7 @@ class UIScene extends Phaser.Scene {
         this.add.existing(this.pauseMenu);
         this.pauseMenu.setVisible(false);
 
-        this.input.on('pointerup', function(pointer){
+        this.input.on('pointerup', function (pointer) {
             pointer.lastBtn.clearTint();
         })
     }
@@ -330,22 +366,73 @@ class MenuScene extends Phaser.Scene {
     }
 
     preload() {
-         //load in buttons
-         this.load.image('playButton', 'assets/ui/play.png')
-         this.load.image('pauseButton', 'assets/ui/pause.png')
-         this.load.image('menuBackground', 'assets/ui/menuBox.png')
+        //load in buttons
+        this.load.image('playButton', 'assets/ui/play.png');
+        this.load.image('muteButton', 'assets/ui/no-sound.png');
+        this.load.image('soundButton', 'assets/ui/sound.png');
+        this.load.image('pauseButton', 'assets/ui/pause.png');
+        this.load.image('menuBackground', 'assets/ui/menuBox.png');
+        this.load.image('setting', 'assets/ui/settings.png');
+        this.load.image('sliderOutline', 'assets/ui/slider-outline.png');
+        this.load.image('sliderDial', 'assets/ui/slider-dial.png');
+
+        //load in audio
+        this.load.audio("menuMusic", "assets/audio/epic.mp3");
+        this.load.audio("gameMusic", "assets/audio/evolution.mp3");
+        this.load.audio("explosion", "assets/audio/explosion.wav");
+        this.load.audio("shoot", "assets/audio/shoot.wav");
 
     }
+
     create() {
         this.mainMenu = new Menu(this, 30, 30, config.width - 60, config.height - 55, "menuBackground", [
             new Button(this, 30, 30, 'playButton', function () {
-                this.scene.scene.start("GameScene");
+                this.scene.music.stopAll();
+                this.scene.scene.start("GameScene", {
+                    music: this.scene.music
+                });
             }),
+            // this.pauseButton = new Button(this, 650, 20, 'pauseButton', function () {
+            //     this.scene.gameScene.scene.pause();
+            //     this.scene.pauseMenu.setVisible(true);
+            new Button(this, 180, 30, 'setting', function () {})
+            
+
+
         ])
+
         this.add.existing(this.mainMenu);
 
-        this.input.on('pointerup', function(pointer){
-            pointer.lastBtn.clearTint();
-        })
+        this.input.on('pointerup', function (pointer) {
+            if (pointer.lastBtn) {
+                pointer.lastBtn.clearTint();
+            }
+        });
+        this.music = new AudioManager(this);
+        this.music.addAudio('menuMusic', { loop: true });
+        this.music.play('menuMusic');
     }
 }
+// class OptionScene extends Phaser.Scene {
+//     constructor() {
+//         super('OptionScene');
+//         console.log('OptionScene');
+//     }
+
+//     create() {
+//         console.log('config= '+ config);
+//         this.mainMenu = new Menu(this, 30, 30, config.width - 60, config.height - 55, "menuBackground", [
+//             new Button(this, 180, 30, 'muteButton', function () {
+//                 this.scene.music.toggleMute();
+//             }, true, true, true, 'soundButton'),
+
+//             new Slider(this, 20, 300, 250, 60, "sliderOutline", "sliderDial", function () {
+//                 this.scene.music.setVolume(this.percent / 100);
+//             })
+//         ])
+//         this.add.existing(this.mainMenu);
+//         this.music = new AudioManager(this);
+//         this.music.addAudio('optionMusic', { loop: true });
+//         this.music.play('optionMusic');
+//     }
+// }

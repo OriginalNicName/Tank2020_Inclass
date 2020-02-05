@@ -17,11 +17,11 @@ class Button extends Phaser.GameObjects.Sprite {
      */
     constructor(scene, x, y, texture, callback, enabled = true, toggleable = false, toggleOn = true, toggleTexture = null) {
         super(scene, x, y, texture);
-        
+
         this.toggleable = toggleable;
 
         //If the button is toggleable, retrieve the other parameters needed to allow the Button to function.
-        if(this.toggleable) {
+        if (this.toggleable) {
             this.toggleOn = toggleOn;
             this.toggleTexture = toggleTexture;
         }
@@ -31,17 +31,17 @@ class Button extends Phaser.GameObjects.Sprite {
 
         //Set whether the Button is enabled. If it's not, make it appear disabled by greying it out.
         this.enabled = enabled;
-        if(!this.enabled) {
+        if (!this.enabled) {
             this.setTint(0x5f5f5f);
         }
 
         //This event fires when the mouse gets released whilst over the sprite.
-        this.setInteractive().on("pointerup", function() {
-            if(this.enabled) {
+        this.setInteractive().on("pointerup", function () {
+            if (this.enabled) {
                 //Swap over all of the toggle settings if the Button is toggleable.
-                if(this.toggleable) {
+                if (this.toggleable) {
                     this.toggleOn = !this.toggleOn;
-                    
+
                     let tempTexture = this.texture;
                     this.setTexture(this.toggleTexture);
                     this.toggleTexture = tempTexture;
@@ -53,8 +53,8 @@ class Button extends Phaser.GameObjects.Sprite {
         });
 
         //This even fires when the mouse gets pressed down whilst over the sprite.
-        this.on("pointerdown", function(pointer) {
-            if(this.enabled){
+        this.on("pointerdown", function (pointer) {
+            if (this.enabled) {
                 pointer.lastBtn = this;
                 this.setTint(0x00ffff);
             }
@@ -97,11 +97,11 @@ class Menu extends Phaser.GameObjects.Container {
         let childrenArray = [backgroundBox];
 
         //Loop through the items parameter, ultimately adding all elements to the Menu object.
-        for(var i = 0; i<items.length; i++) {
+        for (var i = 0; i < items.length; i++) {
             childrenArray.push(items[i]);
         }
 
-        this.add(childrenArray);             
+        this.add(childrenArray);
     }
 }
 
@@ -141,11 +141,11 @@ class Slider extends Phaser.GameObjects.Container {
         dial.setScale(outline.scaleX, outline.scaleY);
 
         //Find the minimum and maximum points on the bar. These are used later to lock the dial between these two points.
-        dial.min = x - dial.displayWidth/2;
-        dial.max = w - dial.displayWidth/2
+        dial.min = x - dial.displayWidth / 2;
+        dial.max = w - dial.displayWidth / 2
 
         //Position the dial at the far right of the bar.
-        dial.setPosition(w - dial.displayWidth/2, dial.y - dial.displayHeight/8);
+        dial.setPosition(w - dial.displayWidth / 2, dial.y - dial.displayHeight / 8);
 
         //Enable the dial to be draggable.
         dial.setInteractive();
@@ -154,25 +154,25 @@ class Slider extends Phaser.GameObjects.Container {
         //Event that triggers when the dial is "dragged".
         //pointer is the mouse/finger pointer used. dragX is the location the mouse has dragged the dial to.
         //The context (this) is the dial.
-        dial.on("drag", function(pointer, dragX) {
-            if(dragX > this.max){
+        dial.on("drag", function (pointer, dragX) {
+            if (dragX > this.max) {
                 this.x = this.max;
                 this.parentContainer.percent = 100;
-            } else if(dragX < this.min){
+            } else if (dragX < this.min) {
                 this.x = this.min;
                 this.parentContainer.percent = 0;
             } else {
                 this.x = dragX;
-                
+
                 //100 * (x - min / x - max); will give us the position of the dial on the Slider as a percentage.
                 //We also need to  -this.parentContainer.x from each side to account for the x position of the container in the world.
                 //Lastly, truncate to make it a whole number.
-                this.parentContainer.percent = Math.trunc(100 * (this.x - this.min - this.parentContainer.x)/(this.max - this.min - this.parentContainer.x));
+                this.parentContainer.percent = Math.trunc(100 * (this.x - this.min - this.parentContainer.x) / (this.max - this.min - this.parentContainer.x));
 
                 //If for whatever reason the value goes above or below 100 or 0, set them to be that.
-                if(this.parentContainer.percent <= 0) {
+                if (this.parentContainer.percent <= 0) {
                     this.parentContainer.percent = 0;
-                } else if(this.parentContainer.percent >= 100) {
+                } else if (this.parentContainer.percent >= 100) {
                     this.parentContainer.percent = 100;
                 }
             }
@@ -241,11 +241,11 @@ class MaskSlider extends Phaser.GameObjects.Container {
         mask.offSet = 0;
 
         //Find the minimum and maximum points on the bar. These are used later to lock the dial between these two points.
-        dial.min = x - dial.displayWidth/2;
-        dial.max = w - dial.displayWidth/2
-        
+        dial.min = x - dial.displayWidth / 2;
+        dial.max = w - dial.displayWidth / 2
+
         //Position the dial at the far right of the bar.
-        dial.setPosition(w - dial.displayWidth/2, dial.y - dial.displayHeight/8);
+        dial.setPosition(w - dial.displayWidth / 2, dial.y - dial.displayHeight / 8);
 
         //Position the mask where it needs to be. As mentioned in the class descriptor, annoyingly masks
         //do not take on their container's location for some reason, so this is us manually placing it
@@ -259,31 +259,31 @@ class MaskSlider extends Phaser.GameObjects.Container {
         //Event that triggers when the dial is "dragged".
         //pointer is the mouse/finger pointer used. dragX is the location the mouse has dragged the dial to.
         //The context (this) is the dial.
-        dial.on("drag", function(pointer, dragX) {
+        dial.on("drag", function (pointer, dragX) {
             //Find the mask from the Slider's list of children.
             mask = this.parentContainer.list[3];
 
-            if(dragX > this.max){
+            if (dragX > this.max) {
                 this.x = this.max;
                 this.parentContainer.percent = 100;
-                mask.setPosition(this.x+this.displayWidth*2-mask.displayWidth, mask.y);
-            } else if(dragX < this.min){
+                mask.setPosition(this.x + this.displayWidth * 2 - mask.displayWidth, mask.y);
+            } else if (dragX < this.min) {
                 this.x = this.min;
                 this.parentContainer.percent = 0;
-                mask.setPosition(this.x+this.displayWidth*2-mask.displayWidth, mask.y);
+                mask.setPosition(this.x + this.displayWidth * 2 - mask.displayWidth, mask.y);
             } else {
                 this.x = dragX;
-                mask.setPosition(this.x+this.displayWidth*2-mask.displayWidth, mask.y);
-                
+                mask.setPosition(this.x + this.displayWidth * 2 - mask.displayWidth, mask.y);
+
                 //100 * (x - min / x - max); will give us the Slider as a percentage;
                 //Also - parentContainer.x from each side to account for the x position of the container;
                 //Lastly truncate to make it a whole number.
-                this.parentContainer.percent = Math.trunc(100 * (this.x - this.min - this.parentContainer.x)/(this.max - this.min - this.parentContainer.x));
+                this.parentContainer.percent = Math.trunc(100 * (this.x - this.min - this.parentContainer.x) / (this.max - this.min - this.parentContainer.x));
 
                 //If for whatever reason the value goes above or below 100 or 0, set them to be that.
-                if(this.parentContainer.percent <= 0) {
+                if (this.parentContainer.percent <= 0) {
                     this.parentContainer.percent = 0;
-                } else if(this.parentContainer.percent >= 100) {
+                } else if (this.parentContainer.percent >= 100) {
                     this.parentContainer.percent = 100;
                 }
             }
@@ -294,5 +294,58 @@ class MaskSlider extends Phaser.GameObjects.Container {
 
         //Add all GameObjects to the Slider.
         this.add([outline, bar, dial, mask]);
+    }
+}
+
+class AudioManager {
+    constructor(scene, volume = 1, muted = false) {
+        this.scene = scene;
+        this.volume = volume;
+        this.muted = muted;
+        this.previousVolume = volume;
+        this.audioList = {};
+    }
+
+    addAudio(key, config = {}) {
+        config.volume = this.volume;
+        let audio = this.scene.sound.add(key, config);
+        this.audioList[key] = audio;
+    }
+
+    play(key) {
+        this.audioList[key].play();
+    }
+
+    setVolume(volume) {
+        this.volume = volume;
+
+        for(let sound of Object.values(this.audioList)) {
+            sound.volume = volume;
+        }
+    }
+
+    stopAll(){
+        for(let sound of Object.values(this.audioList)) {
+            sound.stop();
+        }
+    }
+
+    mute(){
+        this.muted = true;;
+        this.previousVolume = this.volume;
+        this.setVolume(0);
+    }
+
+    unmute() {
+        this.muted = false
+        this.setVolume(this.previousVolume);
+    }
+
+    toggleMute() {
+        if(this.muted){
+            this.unmute();
+        }else{
+            this.mute();
+        }
     }
 }
