@@ -319,18 +319,18 @@ class AudioManager {
     setVolume(volume) {
         this.volume = volume;
 
-        for(let sound of Object.values(this.audioList)) {
+        for (let sound of Object.values(this.audioList)) {
             sound.volume = volume;
         }
     }
 
-    stopAll(){
-        for(let sound of Object.values(this.audioList)) {
+    stopAll() {
+        for (let sound of Object.values(this.audioList)) {
             sound.stop();
         }
     }
 
-    mute(){
+    mute() {
         this.muted = true;;
         this.previousVolume = this.volume;
         this.setVolume(0);
@@ -342,10 +342,52 @@ class AudioManager {
     }
 
     toggleMute() {
-        if(this.muted){
+        if (this.muted) {
             this.unmute();
-        }else{
+        } else {
             this.mute();
         }
+    }
+    /**
+      * Begin playing the BaseSound of the key, provided it has been added to the AudioManager.
+      * @param {string} key - The key of the sound that will begin playing
+      */
+    play(key) {
+        this.audioList[key].play();
+    }
+    /**
+     * Begin fading out the volume of the BaseSound.
+     * @param {string} key - The key of the sound that will begin fading out.
+     * @param {number} duration - (Optional) The time the fade out should take in milliseconds. Default 1000.
+     */
+    fadeOut(key, duration = 1000) {
+        this.scene.tweens.add({
+            targets: this.audioList[key],
+            volume: 0,
+            ease: "Linear",
+            duration: duration,
+
+            onComplete: function (tween) {
+                tween.targets[0].stop();
+            }
+        });
+    }
+
+    /**
+     * Begin fading in the volume of the BaseSound.
+     * @param {string} key - The key of the sound that will begin fading in.
+     * @param {number} duration - (Optional) The time the fade in should take in milliseconds. Default 1000.
+     */
+    fadeIn(key, duration = 1000) {
+        this.scene.tweens.add({
+            targets: this.audioList[key],
+            volume: 1,
+            ease: "Linear",
+            duration: duration,
+
+            onStart: function (tween) {
+                tween.targets[0].play();
+            },
+        });
     }
 }

@@ -2,21 +2,29 @@ class TankScene extends Phaser.Scene {
     map;
     destructLayer;
     player;
-    enemyTanks = [];
+    enemyTanks;
     bullets;
+    enemyTanks;
     enemyBullets;
     explosions;
     score;
+    uiScene;
     constructor() {
         super("GameScene");
     }
     init(data) {
-        console.log(data);
 
         this.music = new AudioManager(this);
+        this.sfx = new AudioManager(this);
+
         if (data.music) {
+            console.log(data.music.volume);
             this.music.volume = data.music.volume;
             this.music.muted = data.music.muted;
+        }
+        if (data.sfx) {
+            this.sfx.volume = data.sfx.volume;
+            this.sfx.muted = data.sfx.muted;
         }
     }
 
@@ -46,6 +54,7 @@ class TankScene extends Phaser.Scene {
 
     }
     create() {
+        this.enemyTanks = [];
         this.score = 0;
         // load in the tilemap
         this.map = this.make.tilemap({
@@ -74,7 +83,7 @@ class TankScene extends Phaser.Scene {
         // create player bullets physics group
         this.bullets = this.physics.add.group({
             defaultKey: 'bullet',
-            maxSize: 2
+            maxSize: 6
         })
         // get reference to object layer in tilemap data
         let objectLayer = this.map.getObjectLayer("objects");
@@ -125,9 +134,11 @@ class TankScene extends Phaser.Scene {
         this.scene.launch(this.uiScene);
         this.uiScene.createUIElements(this);
 
-        this.music = new AudioManager(this);
+        //this.music = new AudioManager(this);
         this.music.addAudio('gameMusic', { loop: true });
         this.music.play('gameMusic');
+        this.sfx.addAudio('explosion');
+        this.sfx.addAudio('shoot');
     }
 
     update(time, delta) {
@@ -136,6 +147,7 @@ class TankScene extends Phaser.Scene {
         // update enemies
         for (let i = 0; i < this.enemyTanks.length; i++) {
             this.enemyTanks[i].update(time, delta)
+            console.log(this.scene);
         }
     }
 
@@ -196,9 +208,7 @@ class TankScene extends Phaser.Scene {
         // set velocity from rotation
         this.physics.velocityFromRotation(bullet.rotation, 500, bullet.body.velocity);
         //add firing audio
-        this.music = new AudioManager(this);
-        this.music.addAudio('shoot');
-        this.music.play('shoot');
+        this.sfx.play('shoot');
         // add collider between bullet and destructable layer
         this.physics.add.collider(bullet, this.destructLayer, this.damageWall, null, this);
         // if target is player, check for overlap with player
@@ -219,9 +229,7 @@ class TankScene extends Phaser.Scene {
         // damage player
         this.player.damage();
         // add explosion audio
-        this.music = new AudioManager(this);
-        this.music.addAudio('explosion');
-        this.music.play('explosion');
+        this.sfx.play('explosion');
         // if player destroyed, end game, play explosion animation
         if (this.player.isDestroyed()) {
             this.input.enabled = false;
@@ -231,6 +239,7 @@ class TankScene extends Phaser.Scene {
             if (explosion) {
                 this.activateExplosion(explosion);
                 explosion.play('explode');
+                this.scene.GameOver()
             }
         }
     }
@@ -246,9 +255,7 @@ class TankScene extends Phaser.Scene {
         // call disposeOfBullet
         this.disposeOfBullet(bullet);
         // add explosion audio
-        this.music = new AudioManager(this);
-        this.music.addAudio('explosion');
-        this.music.play('explosion');
+        this.sfx.play('explosion');
         // loop though enemy tanks array and find enemy tank that has been hit
         let enemy, index;
         for (let i = 0; i < this.enemyTanks.length; i++) {
@@ -274,6 +281,7 @@ class TankScene extends Phaser.Scene {
         }
         // if enemy is destroyed, remove from enemy tanks array
     }
+
 
     damageWall(bullet, tile) {
         // call disposeOfBullet
@@ -336,7 +344,12 @@ class UIScene extends Phaser.Scene {
         this.add.existing(this.pauseButton);
 
         this.pauseMenu = new Menu(this, 240, 140, 300, 300, 'menuBackground', [
-            new Button(this, 30, 30, 'playButton', function () {
+            new Button(this, 15, 30, "homeButton", function () {
+                this.scene.gameScene.music.stopAll();
+                this.scene.gameScene.scene.stop();
+                this.scene.scene.start("MenuScene", { music: this.scene.gameScene.music, sfx: this.scene.gameScene.sfx });
+            }),
+            new Button(this, 155, 30, 'playButton', function () {
                 this.scene.gameScene.scene.resume();
                 this.scene.pauseMenu.setVisible(false);
             }),
@@ -348,6 +361,19 @@ class UIScene extends Phaser.Scene {
             pointer.lastBtn.clearTint();
         })
     }
+
+    GameOver() {
+        if (player.isDestroyed())
+            this.gameOverText = this.add.text(30, 30, "GAME OVER", {
+                font: '40px Arial',
+                fill: '#000000'
+            });
+    }
+
+    updateGameOver(){
+        this.gameOverText.setText('GAME OVER');
+    }
+
 
     updateScoreText(score) {
         this.scoreText.setText('score: ' + score);
@@ -365,6 +391,21 @@ class MenuScene extends Phaser.Scene {
         super('MenuScene');
     }
 
+    init(data) {
+        this.music = new AudioManager(this);
+        this.sfx = new AudioManager(this);
+
+        if (data.music) {
+            this.music.volume = data.music.volume;
+            this.music.muted = data.music.muted;
+        }
+
+        if (data.sfx) {
+            this.sfx.volume = data.sfx.volume;
+            this.sfx.muted = data.sfx.muted;
+        }
+    }
+
     preload() {
         //load in buttons
         this.load.image('playButton', 'assets/ui/play.png');
@@ -372,8 +413,10 @@ class MenuScene extends Phaser.Scene {
         this.load.image('soundButton', 'assets/ui/sound.png');
         this.load.image('pauseButton', 'assets/ui/pause.png');
         this.load.image('menuBackground', 'assets/ui/menuBox.png');
+        this.load.image("homeButton", "assets/ui/home.png");
         this.load.image('setting', 'assets/ui/settings.png');
         this.load.image('sliderOutline', 'assets/ui/slider-outline.png');
+        this.load.image("sliderBar", "assets/ui/slider-bar.png");
         this.load.image('sliderDial', 'assets/ui/slider-dial.png');
 
         //load in audio
@@ -387,52 +430,45 @@ class MenuScene extends Phaser.Scene {
     create() {
         this.mainMenu = new Menu(this, 30, 30, config.width - 60, config.height - 55, "menuBackground", [
             new Button(this, 30, 30, 'playButton', function () {
+                console.log(this.scene.music.volume);
                 this.scene.music.stopAll();
+                console.log(this.scene.music.volume);
                 this.scene.scene.start("GameScene", {
-                    music: this.scene.music
-                });
+                    music: this.scene.music, sfx: this.scene.sfx
+                })
             }),
-            // this.pauseButton = new Button(this, 650, 20, 'pauseButton', function () {
-            //     this.scene.gameScene.scene.pause();
-            //     this.scene.pauseMenu.setVisible(true);
-            new Button(this, 180, 30, 'setting', function () {})
-            
-
-
-        ])
+            new Button(this, 180, 30, 'setting', function () {
+                this.scene.settingMenu.setVisible(true);
+                this.scene.mainMenu.setVisible(false);
+            })
+        ]);
 
         this.add.existing(this.mainMenu);
+        this.settingMenu = new Menu(this, 240, 140, 300, 300, 'menuBackground', [
+            new Button(this, 15, 30, 'muteButton', function () {
+                this.scene.music.toggleMute();
+            }, true, true, !this.music.muted, 'soundButton'),
+            new Button(this, 155, 30, "homeButton", function () {
+                this.scene.settingMenu.visible = false;
+                this.scene.mainMenu.visible = true;
+            }),
+            new Slider(this, 20, 300, 250, 60, "sliderOutline", "sliderDial", function () {
+                this.scene.music.setVolume(this.percent / 100);
+            }),
+            new MaskSlider(this, 20, 400, 250, 60, "sliderOutline", "sliderBar", "sliderDial", function () {
+                this.scene.sfx.setVolume(this.percent / 100);
+            }),
+        ]);
+
+        this.add.existing(this.settingMenu);
+        this.settingMenu.setVisible(false)
 
         this.input.on('pointerup', function (pointer) {
             if (pointer.lastBtn) {
                 pointer.lastBtn.clearTint();
             }
         });
-        this.music = new AudioManager(this);
         this.music.addAudio('menuMusic', { loop: true });
         this.music.play('menuMusic');
     }
 }
-// class OptionScene extends Phaser.Scene {
-//     constructor() {
-//         super('OptionScene');
-//         console.log('OptionScene');
-//     }
-
-//     create() {
-//         console.log('config= '+ config);
-//         this.mainMenu = new Menu(this, 30, 30, config.width - 60, config.height - 55, "menuBackground", [
-//             new Button(this, 180, 30, 'muteButton', function () {
-//                 this.scene.music.toggleMute();
-//             }, true, true, true, 'soundButton'),
-
-//             new Slider(this, 20, 300, 250, 60, "sliderOutline", "sliderDial", function () {
-//                 this.scene.music.setVolume(this.percent / 100);
-//             })
-//         ])
-//         this.add.existing(this.mainMenu);
-//         this.music = new AudioManager(this);
-//         this.music.addAudio('optionMusic', { loop: true });
-//         this.music.play('optionMusic');
-//     }
-// }
